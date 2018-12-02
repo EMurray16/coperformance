@@ -28,7 +28,7 @@ var (
 func loadYears() (map[string]int) {
 	OutMap := make(map[string]int, 175)
 	//open the file and make the reader
-	f, _ := os.Open("C:/Users/Evan/go/src/NYphil/philyears.csv")
+	f, _ := os.Open("./philyears.csv")
 	r := csv.NewReader(f)
 	
 	for i := 0; ; i++ {
