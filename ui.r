@@ -17,12 +17,7 @@ shinyUI( fluidPage(
 		hr(),
 		h4(strong("Download Data")),
 		downloadButton("djson", label="Download json"),
-		downloadButton("dcoperf", label="Download matrix"),
-		hr(),
-		p("For more information, see my ", a("Github repository", href="https://github.com/EMurray16/coperformance"), 
-			" and my ", a("blog post", href="https://overthinkdciscores.com/2018/12/02/using-data-to-visualize-connections-between-composers/"),
-			" on the project."
-		)
+		downloadButton("dcoperf", label="Download matrix")
 	),
 	mainPanel(
 		textOutput("ResMessage"),
