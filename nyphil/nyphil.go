@@ -9,7 +9,7 @@ import(
 	"encoding/json"
 	"strconv"
 	//used for the coperformance matrix
-	"Rgo/rfunc"
+	"github.com/EMurray16/Rgo/rfunc"
 	"math"
 	//used for writing/reading csv files
 	"encoding/csv"
