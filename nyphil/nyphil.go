@@ -181,7 +181,7 @@ func coperformance(CompMap map[string]Composer, Nprog int) ([]([]float64), []str
 			//find the denominator of coperformance
 			denominator := math.Ceil(float64(RowComp.Nprog * ColComp.Nprog) / float64(Nprog))
 			//the numerator is the number of programs in common
-			numerator := float64(rfunc.Ncommon_Uint16(RowComp.Programs, ColComp.Programs))
+			numerator := float64(Ncommon_Uint16(RowComp.Programs, ColComp.Programs))
 			
 			//put the element in the matrix
 			CoperfMat[row][col] = numerator / denominator
