@@ -54,7 +54,7 @@ type Composer struct {
 }
 	
 //this function returns a map of composer names to program ids and seasons
-func loadComposers(file string, MinProg int, Years string) (map[string]Composer, int, error) {
+func LoadComposers(file string, MinProg int, Years string) (map[string]Composer, int, error) {
 	//convert the years string to a min and max year
 	seasonbounds := strings.Split(Years, ":")
 	boundearly := YearInds[ seasonbounds[0] ]
@@ -142,7 +142,7 @@ func loadComposers(file string, MinProg int, Years string) (map[string]Composer,
 }
 
 //this function makes the coperformance matrix from a map of composers
-func coperformance(CompMap map[string]Composer, Nprog int) ([]([]float64), []string) {
+func Coperformance(CompMap map[string]Composer, Nprog int) ([]([]float64), []string) {
 	//we'll make a dummy slice of composers to range faster and more flexibly
 	Ncomp := len(CompMap)
 	if Ncomp == 0 {
@@ -194,7 +194,7 @@ func coperformance(CompMap map[string]Composer, Nprog int) ([]([]float64), []str
 }
 
 //this function writes the json of Composers given a map[string]Composers
-func writeComposer(CompMap map[string]Composer, filename string) (error) {
+func WriteComposer(CompMap map[string]Composer, filename string) (error) {
 	//write the composer info out to a json
 	jsonbytes, err := json.Marshal(CompMap)
 	if err != nil {
@@ -209,7 +209,7 @@ func writeComposer(CompMap map[string]Composer, filename string) (error) {
 }
 
 //this function writes the coperformance matrix
-func writeCoperformance(Coperf [][]float64, CompNames []string, filename string) (error) {
+func WriteCoperformance(Coperf [][]float64, CompNames []string, filename string) (error) {
 	if len(CompNames) < 2 {
 		return NoDataErr
 	}
@@ -248,7 +248,7 @@ func ProcessJSON(minprog int, yearbounds, infile, jsonfile, csvfile string) (jso
 	loadMessage = "nil"
 	
 	//call loadComposers
-	CompMap, n, err := loadComposers(infile, minprog, yearbounds)
+	CompMap, n, err := LoadComposers(infile, minprog, yearbounds)
 	if err != nil {
 		loadMessage = err.Error()
 		//this is catastrophic so return
@@ -256,16 +256,16 @@ func ProcessJSON(minprog int, yearbounds, infile, jsonfile, csvfile string) (jso
 	} 
 	
 	//now write the json file
-	jsonerr := writeComposer(CompMap, jsonfile)
+	jsonerr := WriteComposer(CompMap, jsonfile)
 	if jsonerr != nil {
 		jsonMessage = jsonerr.Error()
 	}
 	
 	//now make the coperformance matrix
-	CoMat, names := coperformance(CompMap, n)
+	CoMat, names := Coperformance(CompMap, n)
 	
 	//now write the coperformance matrix csv
-	csverr := writeCoperformance(CoMat, names, csvfile)
+	csverr := WriteCoperformance(CoMat, names, csvfile)
 	if csverr != nil {
 		csvMessage = csverr.Error()
 	}
