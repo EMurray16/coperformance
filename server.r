@@ -6,7 +6,7 @@ dyn.load("processPhil2.so")
 yvec = read.csv("philyears.csv", stringsAsFactors=F, header=F)[,1]
 source("GoHelp.r")
 source("MakeNetwork.r")
-BaseDir = "/home/evan/ShinyApps/coperformance/temp"
+BaseDir = "$USER/ShinyApps/coperformance/temp"
 HomeDir = getwd()
 
 function(input, output, session) {
