@@ -47,7 +47,7 @@ func GetCoperformance(min, years, fname, jsonname C.SEXP) (C.SEXP) {
 	jfile := sexp.AsString(jsonPoint)
 	
 	//start by getting the map of composers
-	CompMap, _, err := nyphil.LoadComposers(infile, minProg, ystring)
+	CompMap, n, err := nyphil.LoadComposers(infile, minProg, ystring)
 	if err != nil {
 		errsSEXP = sexp.String2sexp(err.Error())
 		//now format into a list
@@ -59,7 +59,7 @@ func GetCoperformance(min, years, fname, jsonname C.SEXP) (C.SEXP) {
 	}
 	
 	//now create the coperformance matrix
-	CoperfMat, CompNames := nyphil.Coperformance(CompMap, minProg)
+	CoperfMat, CompNames := nyphil.Coperformance(CompMap, n)
 	
 	//loop through the names and change all instances of 2 spaces to 1
 	for ind,cname := range CompNames {
@@ -73,7 +73,7 @@ func GetCoperformance(min, years, fname, jsonname C.SEXP) (C.SEXP) {
 	//write the json data file
 	err = nyphil.WriteComposer(CompMap, jfile)
 	if err != nil {
-		errsSEXP = sexp.String2sexp(err.Error())
+		errsSEXP = sexp.String2sexp("WARNING: " + err.Error())
 	}
 	
 	//convert the data itself to sexp

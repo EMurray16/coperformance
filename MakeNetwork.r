@@ -5,9 +5,8 @@ ColList = list(rp=rgb(0.8,0.6,0.7), vm=rgb(0.8,0.4,0), bg=rgb(0,0.6,0.5), yl=rgb
 	or=rgb(0.9,0.6,0), sb=rgb(0.35,0.7,0.9)
 )
 
-MakeNetwork <- function(CoperfFile) {
-	CoperfMat = read.csv(CoperfFile, row.names=1)
-	
+MakeNetwork <- function(CoperfMat) {
+
 	#Now make the matrix into a data frame
 	nodes = data.frame(id=names(CoperfMat), value=rep(1,nrow(CoperfMat)), label=rep("",nrow(CoperfMat)))
 	nodes$title = names(CoperfMat)
