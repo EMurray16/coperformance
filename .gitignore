@@ -1,0 +1,7 @@
+.idea
+.Rhistory
+*.json
+.DS_Store
+*.h
+*.so
+

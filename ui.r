@@ -1,13 +1,13 @@
 #This is for the user interface of the unnamed NY Philharmonic project
-library(shiny); library(shinythemes); library(visNetwork)
+library(shiny); library(shinythemes); library(visNetwork); library(shinyjs)
 yvec = read.csv("philyears.csv", stringsAsFactors=F, header=F)[,1]
 
 
 shinyUI( fluidPage( 
 	headerPanel(strong("New York Philharmonic Coperformance Project")),
 	sidebarPanel(h4(strong("Data Selection")),
-		p("Coperformance: The ratio between the number programs two composers appear in 
-			together and the number of times they should appear together at random"
+		p("Coperformance: The ratio of the number programs two composers appear in 
+			together to the number of times they should appear together at random"
 		),
 		hr(),
 		selectizeInput("FromSeason", label="From", choices=yvec, width="50%", multiple=F, selected="1842-43"),
@@ -23,7 +23,7 @@ shinyUI( fluidPage(
 		textOutput("ResMessage"),
 		verbatimTextOutput("ResPrint"),
 		textOutput("NetMessage"),
-		visNetworkOutput("network")
+		visNetworkOutput("network", height=700)
 	),
-	title="NYPhil_SNA", theme=shinytheme("yeti")
+	title="NYPhil_SNA", theme=shinytheme("yeti"), useShinyjs()
 ))

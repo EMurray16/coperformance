@@ -10,18 +10,12 @@ import (
 	"strconv"
 	//used for the coperformance matrix
 	"github.com/EMurray16/Rgo/rfunc"
+	"github.com/EMurray16/Rgo/rsexp"
 	"math"
 	//used for writing/reading csv files
 	"encoding/csv"
 	"io"
 	"strings"
-	//used for error handling
-	"errors"
-)
-
-var (
-	YearInds  = loadYears()
-	NoDataErr = errors.New("Not enough data to write file")
 )
 
 //this function loads a map of seasons to indexes
@@ -46,39 +40,32 @@ func loadYears() map[string]int {
 	return OutMap
 }
 
-//create a composer type
-type Composer struct {
-	Nprog    int
-	Programs []uint16
-	Seasons  []string
-}
-
-//this function returns a map of composer names to program ids and seasons
-func LoadComposers(file string, MinProg int, Years string) (map[string]Composer, int, error) {
+// loadComposers creates a map of composer names to their programs and the number of total programs
+func LoadComposers(file string, MinProg int, Years string) (composers map[string]composer, nPrograms int, err error) {
 	//convert the years string to a min and max year
 	seasonbounds := strings.Split(Years, ":")
 	boundearly := YearInds[seasonbounds[0]]
 	boundlate := YearInds[seasonbounds[1]]
 
 	//start by making the map, guessing they'll be about 3000 composers
-	Pmap := make(map[string]([]uint16), 3000)
-	Smap := make(map[string]([]string), 3000)
-	OutMap := make(map[string]Composer, 300)
+	programMap := make(map[string]([]uint16), 3000)
+	seasonMap := make(map[string]([]string), 3000)
+	composers = make(map[string]composer, 3000)
 
 	//now open the json file and read it into an interface
 	var i interface{}
 
 	f, err := os.Open(file)
 	if err != nil {
-		return OutMap, 0, err
+		return composers, 0, err
 	}
 	asbytes, err := ioutil.ReadAll(f)
 	if err != nil {
-		return OutMap, 0, err
+		return composers, 0, err
 	}
 	err = json.Unmarshal(asbytes, &i)
 	if err != nil {
-		return OutMap, 0, err
+		return composers, 0, err
 	}
 
 	//pull the slice of programs out of the interface
@@ -101,7 +88,7 @@ func LoadComposers(file string, MinProg int, Years string) (map[string]Composer,
 		id_string := progmap["programID"].(string)
 		progid, err := strconv.ParseUint(id_string, 10, 16)
 		if err != nil {
-			return OutMap, N, err
+			return composers, N, err
 		}
 
 		//now isolate the works
@@ -120,36 +107,36 @@ func LoadComposers(file string, MinProg int, Years string) (map[string]Composer,
 
 		//add the program to the slice for each name
 		for _, name := range UniqName {
-			if Pmap[name] == nil {
-				Pmap[name] = []uint16{}
+			if programMap[name] == nil {
+				programMap[name] = []uint16{}
 				//the seasons map will also be nil
-				Smap[name] = []string{}
+				seasonMap[name] = []string{}
 			}
-			Pmap[name] = append(Pmap[name], uint16(progid))
-			Smap[name] = append(Smap[name], season)
+			programMap[name] = append(programMap[name], uint16(progid))
+			seasonMap[name] = append(seasonMap[name], season)
 		}
 	}
 
 	//now that we have all composers, only keep those with minimum program size
-	for name, progs := range Pmap {
+	for name, progs := range programMap {
 		if len(progs) >= MinProg {
-			OutMap[name] = Composer{len(progs), progs, Smap[name]}
+			composers[name] = composer{len(progs), progs, seasonMap[name]}
 		}
 	}
 
 	//when we get here, we're done and can return
-	return OutMap, N, nil
+	return composers, N, nil
 }
 
 //this function makes the coperformance matrix from a map of composers
-func Coperformance(CompMap map[string]Composer, Nprog int) ([]([]float64), []string) {
+func Coperformance(CompMap map[string]composer, Nprog int) (rsexp.Matrix, []string, error) {
 	//we'll make a dummy slice of composers to range faster and more flexibly
 	Ncomp := len(CompMap)
 	if Ncomp == 0 {
-		return []([]float64){}, []string{"0"}
+		return rsexp.Matrix{}, nil, NoDataErr
 	}
 
-	CompSlice := make([]Composer, Ncomp)
+	CompSlice := make([]composer, Ncomp)
 	CompNames := make([]string, Ncomp)
 	i := 0
 	for name, comp := range CompMap {
@@ -159,19 +146,22 @@ func Coperformance(CompMap map[string]Composer, Nprog int) ([]([]float64), []str
 	}
 
 	//now we need to build coperformance matrix
-	CoperfMat := make([]([]float64), Ncomp)
-	//initialize the 0th column and the first diag element
-	CoperfMat[0] = make([]float64, Ncomp)
+	CoperfMat, err := rsexp.CreateIdentity(Ncomp)
+	if err != nil {
+		return rsexp.Matrix{}, CompNames, err
+	}
+
 	//now loop through the composers to index the rows
 	for row := 1; row < len(CompMap); row++ {
-		//initialize the column of the same index
-		CoperfMat[row] = make([]float64, Ncomp)
 
 		//now range through all the composers up to the diag
 		for col := 0; col < (row + 1); col++ {
 			//if the col == row, the diag is defined as the number of appearances
 			if col == row {
-				CoperfMat[row][col] = float64(CompSlice[row].Nprog)
+				err := CoperfMat.SetInd(row, col, float64(CompSlice[row].Nprog))
+				if err != nil {
+					return *CoperfMat, CompNames, err
+				}
 				continue
 			}
 			//isolate the two composers
@@ -184,23 +174,35 @@ func Coperformance(CompMap map[string]Composer, Nprog int) ([]([]float64), []str
 			numerator := float64(Ncommon_Uint16(RowComp.Programs, ColComp.Programs))
 
 			//put the element in the matrix
-			CoperfMat[row][col] = numerator / denominator
+			err := CoperfMat.SetInd(row, col, numerator/denominator)
+			if err != nil {
+				return *CoperfMat, CompNames, err
+			}
 		}
 	}
 	//we need to add the frist element of the diag now that its initialized
-	CoperfMat[0][0] = float64(CompSlice[0].Nprog)
+	err = CoperfMat.SetInd(0, 0, float64(CompSlice[0].Nprog))
+	if err != nil {
+		return *CoperfMat, CompNames, err
+	}
 
-	return CoperfMat, CompNames
+	return *CoperfMat, CompNames, nil
 }
 
 //this function writes the json of Composers given a map[string]Composers
-func WriteComposer(CompMap map[string]Composer, filename string) error {
-	//write the composer info out to a json
+func WriteComposers(CompMap map[string]composer, filename string) error {
 	jsonbytes, err := json.Marshal(CompMap)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filename, jsonbytes, os.ModeDir)
+
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(jsonbytes)
 	if err != nil {
 		return err
 	}
@@ -209,7 +211,7 @@ func WriteComposer(CompMap map[string]Composer, filename string) error {
 }
 
 //this function writes the coperformance matrix
-func WriteCoperformance(Coperf [][]float64, CompNames []string, filename string) error {
+func writeCoperformance(Coperf rsexp.Matrix, CompNames []string, filename string) error {
 	if len(CompNames) < 2 {
 		return NoDataErr
 	}
@@ -228,48 +230,20 @@ func WriteCoperformance(Coperf [][]float64, CompNames []string, filename string)
 	//now write each row of the file
 	for i, name := range CompNames {
 		//convert the slice of column values to strings
-		Costrings := make([]string, len(CompNames))
-		for j := 0; j < len(CompNames); j++ {
-			Costrings[j] = strconv.FormatFloat(Coperf[i][j], 'f', -1, 64)
+		rowslice := make([]string, len(CompNames)+1)
+		rowslice[0] = name
+		coperfRow, err := Coperf.GetRow(i)
+		if err != nil {
+			return err
 		}
+
+		for j := 0; j < len(CompNames); j++ {
+			rowslice[j+1] = strconv.FormatFloat(coperfRow[j], 'f', -1, 64)
+		}
+
 		//now make the full row slice
-		rowslice := append([]string{name}, Costrings...)
 		matwriter.Write(rowslice)
 	}
 
 	return nil
-}
-
-//now export a function that does everything
-func ProcessJSON(minprog int, yearbounds, infile, jsonfile, csvfile string) (jsonMessage, csvMessage, loadMessage string) {
-	//set the error strings to "nil"
-	jsonMessage = "nil"
-	csvMessage = "nil"
-	loadMessage = "nil"
-
-	//call loadComposers
-	CompMap, n, err := LoadComposers(infile, minprog, yearbounds)
-	if err != nil {
-		loadMessage = err.Error()
-		//this is catastrophic so return
-		return jsonMessage, csvMessage, loadMessage
-	}
-
-	//now write the json file
-	jsonerr := WriteComposer(CompMap, jsonfile)
-	if jsonerr != nil {
-		jsonMessage = jsonerr.Error()
-	}
-
-	//now make the coperformance matrix
-	CoMat, names := Coperformance(CompMap, n)
-
-	//now write the coperformance matrix csv
-	csverr := WriteCoperformance(CoMat, names, csvfile)
-	if csverr != nil {
-		csvMessage = csverr.Error()
-	}
-
-	//now return everything
-	return jsonMessage, csvMessage, loadMessage
 }
